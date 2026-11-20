@@ -1,8 +1,9 @@
-# Amlogic A311D 4GB RAM eMMC USB3 WiFi BT
-BOARD_NAME="Radxa Zero 2"
+# Amlogic A311D hexa core 4GB RAM eMMC USB3 WiFi BT
+BOARD_NAME="Zero 2"
 BOARD_VENDOR="radxa"
 BOARDFAMILY="meson-g12b"
 BOARD_MAINTAINER=""
+INTRODUCED="2021"
 BOOTCONFIG="radxa-zero2_config"
 KERNEL_TARGET="current,edge"
 KERNEL_TEST_TARGET="current"
@@ -50,9 +51,10 @@ function post_config_uboot_target__radxa-zero2_fancy_uboot() {
 	run_host_command_logged scripts/config --enable CONFIG_CMD_DNS
 	run_host_command_logged scripts/config --enable CONFIG_PROT_TCP
 
-	display_alert "u-boot for ${BOARD}/${BRANCH}" "u-boot: enable LWIP (new networking stack)" "info"
-	run_host_command_logged scripts/config --enable CONFIG_CMD_MII
-	run_host_command_logged scripts/config --enable CONFIG_NET_LWIP
+	# @TODO: disabled; v2026.01 lwip has a few issues; check after v2026.04 as Kwiboo is already at-it
+	#display_alert "u-boot for ${BOARD}/${BRANCH}" "u-boot: enable LWIP (new networking stack)" "info"
+	#run_host_command_logged scripts/config --enable CONFIG_CMD_MII
+	#run_host_command_logged scripts/config --enable CONFIG_NET_LWIP
 
 	# UMS, RockUSB, gadget stuff
 	display_alert "u-boot for ${BOARD}/${BRANCH}" "u-boot: enable UMS/RockUSB gadget" "info"

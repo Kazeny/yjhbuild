@@ -59,7 +59,7 @@ diff --git a/drivers/mtd/spi-nor/core.c b/drivers/mtd/spi-nor/core.c
 index 111111111111..222222222222 100644
 --- a/drivers/mtd/spi-nor/core.c
 +++ b/drivers/mtd/spi-nor/core.c
-@@ -1940,6 +1940,7 @@ int spi_nor_sr2_bit7_quad_enable(struct spi_nor *nor)
+@@ -1949,6 +1949,7 @@ int spi_nor_sr2_bit7_quad_enable(struct spi_nor *nor)
  }
  
  static const struct spi_nor_manufacturer *manufacturers[] = {
@@ -71,7 +71,7 @@ diff --git a/drivers/mtd/spi-nor/core.h b/drivers/mtd/spi-nor/core.h
 index 111111111111..222222222222 100644
 --- a/drivers/mtd/spi-nor/core.h
 +++ b/drivers/mtd/spi-nor/core.h
-@@ -584,6 +584,7 @@ struct sfdp {
+@@ -590,6 +590,7 @@ struct sfdp {
  };
  
  /* Manufacturer drivers. */
