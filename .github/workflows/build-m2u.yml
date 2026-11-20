@@ -1,0 +1,110 @@
+name: Build Armbian Image (GitHub Actions)
+
+on:
+  workflow_dispatch:
+    inputs:
+      board:
+        description: '板卡 BOARD 名（如 bananapim2ultra / jm10-3588）'
+        required: false
+        default: 'bananapim2ultra'
+        type: string
+      kernel_branch:
+        description: '内核分支：edge=7.3(arm32 支持 PREEMPT_RT) / current=6.18'
+        required: false
+        default: 'edge'
+        type: choice
+        options:
+          - edge
+          - current
+          - legacy
+      release:
+        description: '用户空间发行版'
+        required: false
+        default: 'bookworm'
+        type: choice
+        options:
+          - bookworm
+          - trixie
+          - noble
+      minimal:
+        description: '极简镜像（BUILD_MINIMAL）'
+        required: false
+        default: 'no'
+        type: choice
+        options: ['no', 'yes']
+      rt_check:
+        description: '构建后校验 PREEMPT_RT 是否真正生效'
+        required: false
+        default: 'yes'
+        type: choice
+        options: ['yes', 'no']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # compile.sh 需要 git 历史计算版本号
+
+      # 清理预装软件释放 ~30GB，否则内核构建会耗尽 14GB 磁盘
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+                      /opt/hostedtoolcache/CodeQL /usr/local/.ghcup \
+                      /usr/share/swift /usr/local/share/boost
+          sudo docker image prune -a -f
+          sudo apt-get clean
+          df -h /
+
+      - name: Install host requirements
+        run: sudo ./compile.sh requirements
+
+      - name: Build image
+        run: |
+          ./compile.sh build \
+            BOARD=${{ inputs.board }} \
+            BRANCH=${{ inputs.kernel_branch }} \
+            RELEASE=${{ inputs.release }} \
+            BUILD_MINIMAL=${{ inputs.minimal }} \
+            BUILD_DESKTOP=no \
+            KERNEL_CONFIGURE=no \
+            COMPRESS_OUTPUTIMAGE=sha,img,xz \
+            SHARE_LOG=yes
+
+      # Kconfig 依赖不满足时会静默丢弃选项，必须显式校验产物
+      - name: Verify PREEMPT_RT in kernel
+        if: inputs.rt_check == 'yes'
+        run: |
+          mkdir -p /tmp/kcheck
+          KDEB=$(ls output/debs/linux-image-*.deb 2>/dev/null | head -1)
+          [[ -n "$KDEB" ]] || { echo "未找到内核 deb 包"; exit 1; }
+          dpkg -x "$KDEB" /tmp/kcheck
+          CFG=$(find /tmp/kcheck -name 'config-*' | head -1)
+          echo "== $(basename "$CFG") 抢占相关选项 =="
+          grep -E '^CONFIG_PREEMPT|^CONFIG_HZ_' "$CFG" || true
+          grep -q '^CONFIG_PREEMPT_RT=y' "$CFG" || {
+            echo "❌ CONFIG_PREEMPT_RT 未生效（内核分支/架构不支持，请用 edge）"
+            exit 1
+          }
+          echo "✅ PREEMPT_RT enabled"
+
+      - name: Upload image artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: armbian-${{ inputs.board }}-${{ inputs.kernel_branch }}
+          path: |
+            output/images/*.img.xz
+            output/images/*.img.xz.sha
+          compression-level: 0
+          retention-days: 7
+
+      - name: Upload debug logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: armbian-debug-logs
+          path: output/debug/
+          retention-days: 14
