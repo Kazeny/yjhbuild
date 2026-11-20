@@ -61,6 +61,14 @@ jobs:
       - name: Install host requirements
         run: sudo ./compile.sh requirements
 
+      # requirements 以 root 运行会在仓库里留下 root 属主的 .tmp/ output/，
+      # 后续非特权 build 步骤在里面 mkdir 会被拒绝 (mkdir: Permission denied)
+      - name: Reset root-owned build dirs
+        run: |
+          sudo umount .tmp/* 2>/dev/null || true
+          sudo rm -rf .tmp output
+          df -h /
+
       - name: Build image
         run: |
           ./compile.sh build \
@@ -106,5 +114,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: armbian-debug-logs
-          path: output/debug/
+          path: |
+            output/debug/
+            output/logs/
           retention-days: 14
