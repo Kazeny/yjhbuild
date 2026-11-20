@@ -58,6 +58,21 @@ jobs:
           sudo apt-get clean
           df -h /
 
+      # 恢复 armbian 缓存: git 镜像 / 内核构建工作树(含.o,真增量编译) / rootfs / apt / ccache
+      # 命中后全量构建 3~4h -> 约 1h; 大改内核配置时缓存会被部分击穿属正常
+      - uses: actions/cache@v4
+        with:
+          path: |
+            cache/git-bare
+            cache/git-bundles
+            cache/sources
+            cache/aptcache
+            cache/rootfs
+            cache/initrd
+            cache/ccache
+          key: armbian-m2u-v1-${{ github.sha }}
+          restore-keys: armbian-m2u-v1-
+
       - name: Install host requirements
         run: sudo ./compile.sh requirements
 
@@ -71,7 +86,7 @@ jobs:
 
       - name: Build image
         run: |
-          ./compile.sh build \
+          ENABLE_EXTENSIONS=ccache ./compile.sh build \
             BOARD=${{ inputs.board }} \
             BRANCH=${{ inputs.kernel_branch }} \
             RELEASE=${{ inputs.release }} \
